@@ -1,0 +1,2 @@
+- Write some sort of backtester that bridges the csv files to the Trade class.
+- Make sense of the data available

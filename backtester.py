@@ -2,8 +2,7 @@ import pandas as pd
 from engine.datamodel import *
 from pandas import DataFrame as df
 from tutorial.tutorial import Trader
-
-prices_df = pd.read_csv('tutorial/data/prices_round_0_day_-1.csv', delimiter=';')
+import matplotlib.pyplot as plt
 
 class Backtester:
     def __init__(self, Trader, prices_df: df, trades_df: df):
@@ -21,6 +20,9 @@ class Backtester:
 
         self.current_cash = 0
         self.last_trader_data = ""
+
+        #Performance history for plotting
+        self.history = [] 
 
     def run(self):
         price_groups = self.prices_df.groupby('timestamp')
@@ -55,6 +57,54 @@ class Backtester:
             # Update ledger
             self.update_ledger(fills)
             self.last_trader_data = trader_data
+
+            self.log_performance(t, cur_time_prices)
+
+    def log_performance(self, t, prices_at_t):
+        stats = {'timestamp': t, 'cash': self.current_cash}
+        total_value = self.current_cash
+        
+        for product in self.current_position.keys():
+            pos = self.current_position[product]
+            stats[f'{product}_pos'] = pos
+            
+            # Current market price for valuation
+            prod_row = prices_at_t[prices_at_t['product'] == product]
+            if not prod_row.empty:
+                row = prod_row.iloc[0]
+                mid_price = (row['bid_price_1'] + row['ask_price_1']) / 2
+                item_value = pos * mid_price
+                total_value += item_value
+                stats[f'{product}_pnl'] = item_value
+        
+        stats['total_pnl'] = total_value
+        self.history.append(stats)
+
+    def plot_performance(self):
+        df_history = pd.DataFrame(self.history)
+        
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10), sharex=True)
+
+        # Plot 1: Total PnL
+        ax1.plot(df_history['timestamp'], df_history['total_pnl'], label='Total PnL', color='green', linewidth=2)
+        ax1.set_title('Total Profit & Loss Over Time')
+        ax1.set_ylabel('Profit (Credits)')
+        ax1.grid(True, alpha=0.3)
+        ax1.legend()
+
+        # Plot 2: Position Sizes
+        for product in self.current_position.keys():
+            ax2.plot(df_history['timestamp'], df_history[f'{product}_pos'], label=f'{product} Position')
+        
+        ax2.set_title('Asset Positions')
+        ax2.set_ylabel('Quantity')
+        ax2.set_xlabel('Timestamp')
+        ax2.axhline(0, color='black', linewidth=1, linestyle='--') # Zero line
+        ax2.grid(True, alpha=0.3)
+        ax2.legend()
+
+        plt.tight_layout()
+        plt.show()
 
     def get_order_depths(self, prices):
         order_depths = {}
@@ -177,7 +227,3 @@ class Backtester:
                 self.current_position[product] += trade.quantity
                 self.current_cash -= trade.price * trade.quantity
                 self.own_trades[product].append(trade)
-
-# Run test
-backtester = Backtester(Trader, prices_df, pd.DataFrame())
-backtester.run()
