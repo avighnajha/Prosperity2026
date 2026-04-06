@@ -1,3 +1,4 @@
+#%%
 from backtester import Backtester
 import pandas as pd
 from tutorial.tutorial import Trader
@@ -11,6 +12,7 @@ trader = Trader()
 backtester = Backtester(trader, prices_df, pd.DataFrame())
 backtester.run()
 
+#%%
 # See the results
 print(f"Final Cash: {backtester.current_cash}")
 print(f"Final Positions: {backtester.current_position}")

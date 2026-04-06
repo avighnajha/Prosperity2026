@@ -1,3 +1,5 @@
+import json
+
 from engine.datamodel import OrderDepth, UserId, TradingState, Order
 from typing import List
 import string
@@ -16,40 +18,45 @@ class Trader:
 
         # Orders to be placed on exchange matching engine
         result = {}
+        
+        # LOAD STATE: Recover history from previous ticks
+        # Format: {"TOMATOES": [list of prices], "EMERALDS": [list of prices]}
+        history = self.decompress_data(state.traderData)
         for product in state.order_depths:
             order_depth: OrderDepth = state.order_depths[product]
+            current_position = state.position.get(product, 0)
             orders: List[Order] = []
 
+            # Fair value calc
             if product == "EMERALDS":
-                acceptable_price = 10000
-                print("Acceptable price : " + str(acceptable_price))
+                fair_value = 10000
+                print("Fair value : " + str(fair_value))
                 print("Buy Order depth : " + str(len(order_depth.buy_orders)) + ", Sell order depth : " + str(len(order_depth.sell_orders)))
         
-                if len(order_depth.sell_orders) != 0:
-                    # Sort keys ascending
-                    sorted_asks = sorted(order_depth.sell_orders.keys())
-                    best_ask = sorted_asks[0]
-                    best_ask_amount = order_depth.sell_orders[best_ask]
+            # Snipe any bad orders
+            snipe_orders, current_position = self.snipe(product, order_depth, fair_value, current_position)
+            orders.extend(snipe_orders)
 
-                    print("Best ask : " + str(best_ask) + ", amount : " + str(best_ask_amount))
+            # Market making
+            make_orders, current_position = self.make(product, order_depth, fair_value, current_position)
+            orders.extend(make_orders)
 
-                    if int(best_ask) < acceptable_price:
-                        print("BUY", str(-best_ask_amount) + "x", best_ask)
-                        orders.append(Order(product, best_ask, -best_ask_amount))
-        
-                if len(order_depth.buy_orders) != 0:
-                    sorted_bids = sorted(order_depth.buy_orders.keys(), reverse=True)
-                    best_bid = sorted_bids[0]
-                    best_bid_amount = order_depth.buy_orders[best_bid]
-
-                    print("Best bid : " + str(best_bid) + ", amount : " + str(best_bid_amount))
-
-                    if int(best_bid) > acceptable_price:
-                        print("SELL", str(best_bid_amount) + "x", best_bid)
-                        orders.append(Order(product, best_bid, -best_bid_amount))
                 
-                result[product] = orders
     
-        traderData = ""  # No state needed - we check position directly
+        traderData = self.compress_data()
         conversions = 0
         return result, conversions, traderData
+    
+    def snipe(self, product, order_depth, fair_value, current_position):
+        pass
+
+    def make(self, product, order_depth, fair_value, current_position):
+        pass
+
+    def decompress_data(self, data_string: str):
+        if not data_string:
+            return {} # First tick, memory is empty
+        return json.loads(data_string)
+    
+    def compress_data(self, history_dict: dict):
+        return json.dumps(history_dict)
