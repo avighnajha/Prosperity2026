@@ -4,6 +4,11 @@ from engine.datamodel import OrderDepth, UserId, TradingState, Order
 from typing import List
 import string
 
+LIMITS = {
+    "EMERALDS": 20, "TOMATOES": 20, "STARFISH": 20, "ORCHIDS": 100,
+    "CHOCOLATE": 250, "STRAWBERRIES": 250, "ROSES": 60, "GIFT_BASKET": 60,
+    "COCONUT": 200, "COCONUT_COUPON": 600}
+
 class Trader:
 
     def bid(self):
@@ -27,11 +32,14 @@ class Trader:
             current_position = state.position.get(product, 0)
             orders: List[Order] = []
 
+
             # Fair value calc
             if product == "EMERALDS":
                 fair_value = 10000
                 print("Fair value : " + str(fair_value))
                 print("Buy Order depth : " + str(len(order_depth.buy_orders)) + ", Sell order depth : " + str(len(order_depth.sell_orders)))
+            else:
+                break
         
             # Snipe any bad orders
             snipe_orders, current_position = self.snipe(product, order_depth, fair_value, current_position)
@@ -43,12 +51,37 @@ class Trader:
 
                 
     
-        traderData = self.compress_data()
+        traderData = self.compress_data(history)
         conversions = 0
         return result, conversions, traderData
     
     def snipe(self, product, order_depth, fair_value, current_position):
-        pass
+        orders = []
+        limit = LIMITS[product]
+
+        # Low to high
+        sorted_sells = sorted(order_depth.sell_orders.items())
+
+        for price, volume in sorted_sells:
+            if price < fair_value and volume > 0:
+                order_volume = min(volume, limit - current_position)
+                orders.append(Order(product, price, order_volume, "SELL"))
+                current_position += order_volume
+            else:
+                break
+        
+        # High to low
+        sorted_buys = sorted(order_depth.buy_orders.items(), reverse=True)
+
+        for price, volume in sorted_buys:
+            if price > fair_value and volume > 0:
+                order_volume = min(volume, limit + current_position)
+                orders.append(Order(product, price, order_volume, "BUY"))
+                current_position -= order_volume
+            else:
+                break
+
+        return orders, current_position
 
     def make(self, product, order_depth, fair_value, current_position):
         pass
