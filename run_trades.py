@@ -1,10 +1,10 @@
 #%%
 from backtester import Backtester
 import pandas as pd
-from tutorial.tutorial import Trader
+from round1.trader import Trader
 
-prices_df = pd.read_csv('tutorial/data/prices_round_0_day_-1.csv', delimiter=';')
-trades_df = pd.read_csv('tutorial/data/trades_round_0_day_-1.csv', delimiter=';')
+prices_df = pd.read_csv('round1/data/prices_round_1_day_-2.csv', delimiter=';')
+trades_df = pd.read_csv('round1/data/trades_round_1_day_-2.csv', delimiter=';')
 
 trader = Trader()
 
